@@ -47,3 +47,85 @@ Returns object with following members:
 - `meta` - object with following members:
   - `pubOnSubCall: boolean` - if `pubCachedOnSub` parameter of the `PubSub()` constructor was set to `true`, it states whether a current call of a subscriber is automatic and takes place due to addition of the subscriber
   - `stop: Symbol` - return it from a subscriber to stop the flow of a value and prevent remaining subscribers from handling the value
+
+## Examples
+
+### Use of the `unsub()` method
+
+```
+const ps = PubSub();
+
+const subA$ = ps.sub(val => console.log('A: ' + val));
+const subB$ = ps.sub(val => console.log('B: ' + val));
+
+ps.pub(1);
+// A: 1
+// B: 1
+
+ps.unsub(subA$);
+
+ps.pub(2);
+// B: 2
+```
+
+### Use of the `stop` symbol
+
+```
+let i = 0;
+const ps = PubSub();
+
+ps.sub((val, meta) => {
+  i++;
+  console.log('A: ' + val);
+  if (i === 2) return meta.stop;
+});
+
+ps.sub(val => {
+  console.log('B: ' + val);
+});
+
+ps.pub(1);
+// A: 1
+// B: 1
+
+ps.pub(2);
+// A: 2
+
+ps.pub(3);
+// A: 3
+// B: 3
+```
+
+### Cache
+
+```
+const ps = PubSub(2, [10,20], true);
+
+ps.sub(val => console.log('A: ' + val));
+// A: 10,20
+
+ps.pub(1);
+// A: 20,1
+
+ps.sub(val => console.log('B: ' + val));
+// B: 20,1
+
+ps.pub(2);
+// A: 1,2
+// B: 1,2
+
+/*
+exceptionally, do not emit cached items
+on sub in this subscriber
+*/
+ps.sub((val, meta) => {
+  if (!meta.pubOnSubCall) {
+    console.log('C: ' + val);
+  }
+});
+
+ps.pub(3);
+// A: 2,3
+// B: 2,3
+// C: 2,3
+```
